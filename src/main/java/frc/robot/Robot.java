@@ -6,85 +6,64 @@ package frc.robot;
 
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
+import edu.wpi.first.wpilibj2.command.WaitCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
-import edu.wpi.first.math.geometry.Rotation2d;
+import frc.robot.subsystems.Launcher;
 
 import com.ctre.phoenix6.mechanisms.swerve.SwerveRequest;
 import com.ctre.phoenix6.mechanisms.swerve.SwerveModule.DriveRequestType;
-import frc.robot.generated.*;
+
+import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.CommandSwerveDrivetrain;
-import frc.robot.subsystems.Launcher;
 
 public class Robot extends TimedRobot {
-  private final SwerveRequest.RobotCentric forwardStraight = new SwerveRequest.RobotCentric().withDriveRequestType(DriveRequestType.OpenLoopVoltage);
   private final CommandXboxController joystick = new CommandXboxController(Constants.Ports.DRIVER_CONTROLLER);
   private final CommandSwerveDrivetrain drivetrain = TunerConstants.DriveTrain;
-  private final Telemetry logger = new Telemetry(Constants.Drivetrain.MAX_SPEED);
-
-  // Field-centric drive request
-  private final SwerveRequest.FieldCentric drive = new SwerveRequest.FieldCentric()
-          .withDeadband(Constants.Drivetrain.MAX_SPEED * 0.1)
-          .withRotationalDeadband(Constants.Drivetrain.MAX_ANGULAR_RATE * 0.1)
-          .withDriveRequestType(DriveRequestType.OpenLoopVoltage);
-
-  // Brake request to stop the robot
-  private final SwerveRequest.SwerveDriveBrake brake = new SwerveRequest.SwerveDriveBrake();
-  // Request to point wheels in a specific direction
-  private final SwerveRequest.PointWheelsAt point = new SwerveRequest.PointWheelsAt();
+  private Telemetry telemetry;
   private Launcher launcher;
+
+  private final SwerveRequest.FieldCentric drive = new SwerveRequest.FieldCentric()
+      .withDeadband(Constants.Drivetrain.MAX_SPEED * 0.1)
+      .withRotationalDeadband(Constants.Drivetrain.MAX_ANGULAR_RATE * 0.1)
+      .withDriveRequestType(DriveRequestType.OpenLoopVoltage);
 
   @Override
   public void robotInit() {
-    drivetrain.registerTelemetry(logger::telemeterize);
+    telemetry = new Telemetry(drivetrain);
     this.launcher = Launcher.getInstance();
     configureButtonBindings();
   }
 
   private void configureButtonBindings() {
-    // The controls are for field-oriented driving:
-    // Left stick Y axis -> forward and backwards movement
-    // Left stick X axis -> left and right movement
-    // Right stick X axis -> rotation
     drivetrain.setDefaultCommand(
-            drivetrain.applyRequest(() -> drive
-                    .withVelocityX(-joystick.getLeftY() * Constants.Drivetrain.MAX_SPEED)  // Negative Y is forward
-                    .withVelocityY(-joystick.getLeftX() * Constants.Drivetrain.MAX_SPEED)  // Negative X is left
-                    .withRotationalRate(-joystick.getRightX() * Constants.Drivetrain.MAX_ANGULAR_RATE)  // Negative X is counter-clockwise
-            ).ignoringDisable(true)
+        drivetrain.applyRequest(() -> drive
+            .withVelocityX(-joystick.getLeftY() * Constants.Drivetrain.MAX_SPEED)
+            .withVelocityY(-joystick.getLeftX() * Constants.Drivetrain.MAX_SPEED)
+            .withRotationalRate(-joystick.getRightX() * Constants.Drivetrain.MAX_ANGULAR_RATE)
+        ).ignoringDisable(true)
     );
 
-    // A button will brake the robot
-    joystick.a().whileTrue(drivetrain.applyRequest(() -> brake));
+    joystick.y().onTrue(drivetrain.runOnce(drivetrain::seedFieldRelative));
 
-    // B button will point the wheels in the direction of the left stick
-    joystick.b().whileTrue(drivetrain.applyRequest(() ->
-            point.withModuleDirection(new Rotation2d(-joystick.getLeftY(), -joystick.getLeftX()))
-    ));
-
-    // D-pad Up: Move forward at 50% speed (robot-centric)
-    joystick.pov(0).whileTrue(drivetrain.applyRequest(() -> forwardStraight.withVelocityX(0.5).withVelocityY(0)));
-
-    // D-pad Down: Move backward at 50% speed (robot-centric)
-    joystick.pov(180).whileTrue(drivetrain.applyRequest(() -> forwardStraight.withVelocityX(-0.5).withVelocityY(0)));
-
-    // Left bumper will reset the field-centric heading
-    joystick.leftBumper().onTrue(drivetrain.runOnce(drivetrain::seedFieldRelative));
-
-    this.joystick.y()
-            .onTrue(this.launcher.prepareLaunch())
-            .onFalse(this.launcher.off());
+    this.joystick.x().onTrue(this.launcher.prepareLaunch());
 
     this.joystick.rightTrigger()
-            .onTrue(this.launcher.launch()).
-            onFalse(this.launcher.off());
+      .onTrue(this.launcher.launch()).
+      onFalse(new WaitCommand(1).andThen(this.launcher.off()));
 
     this.joystick.rightBumper()
-            .onTrue(this.launcher.intake()).
-            onFalse(this.launcher.off());
+      .onTrue(this.launcher.intake()).
+      onFalse(this.launcher.off());
+
+    this.joystick.b()
+      .onTrue(this.launcher.amp()).
+      onFalse(new WaitCommand(1).andThen(this.launcher.off()));
+
   }
 
   @Override
   public void robotPeriodic() {
+    telemetry.updateTelemetry();
     CommandScheduler.getInstance().run();
   }
 
@@ -99,7 +78,7 @@ public class Robot extends TimedRobot {
 
   @Override
   public void autonomousInit() {}
-
+  
   @Override
   public void autonomousPeriodic() {}
 
@@ -107,7 +86,7 @@ public class Robot extends TimedRobot {
   public void autonomousExit() {}
 
   @Override
-  public void teleopInit(){}
+  public void teleopInit() {}
 
   @Override
   public void teleopPeriodic() {}
