@@ -6,11 +6,9 @@ public class Constants {
     public static final double LOOP_INTERVAL = 0.1;
 
     public static class Ports{
-
         public static final int TOP_LAUNCHER = 6;
         public static final int BOTTOM_LAUNCHER = 53;
         public static final int DRIVER_CONTROLLER = 0;
-        public static final String CTRE_CANBUS = "moe";
     }
 
     public static class Launcher{

@@ -5,6 +5,7 @@
 package frc.robot;
 
 import edu.wpi.first.wpilibj.TimedRobot;
+import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.WaitCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
@@ -19,8 +20,10 @@ import frc.robot.subsystems.CommandSwerveDrivetrain;
 public class Robot extends TimedRobot {
   private final CommandXboxController joystick = new CommandXboxController(Constants.Ports.DRIVER_CONTROLLER);
   private final CommandSwerveDrivetrain drivetrain = TunerConstants.DriveTrain;
-  private Telemetry telemetry;
   private Launcher launcher;
+
+  private Auto auto;
+  private Command autonomousCommand;
 
   private final SwerveRequest.FieldCentric drive = new SwerveRequest.FieldCentric()
       .withDeadband(Constants.Drivetrain.MAX_SPEED * 0.1)
@@ -29,8 +32,8 @@ public class Robot extends TimedRobot {
 
   @Override
   public void robotInit() {
-    telemetry = new Telemetry(drivetrain);
     this.launcher = Launcher.getInstance();
+    this.auto = new Auto(drivetrain);
     configureButtonBindings();
   }
 
@@ -63,7 +66,6 @@ public class Robot extends TimedRobot {
 
   @Override
   public void robotPeriodic() {
-    telemetry.updateTelemetry();
     CommandScheduler.getInstance().run();
   }
 
@@ -77,7 +79,12 @@ public class Robot extends TimedRobot {
   public void disabledExit() {}
 
   @Override
-  public void autonomousInit() {}
+  public void autonomousInit() {
+    autonomousCommand = auto.getAutonomousCommand();
+    if (autonomousCommand != null) {
+      autonomousCommand.schedule();
+    }
+  }
   
   @Override
   public void autonomousPeriodic() {}
