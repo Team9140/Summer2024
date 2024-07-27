@@ -9,6 +9,7 @@ public class Constants {
         public static final int TOP_LAUNCHER = 6;
         public static final int BOTTOM_LAUNCHER = 53;
         public static final int DRIVER_CONTROLLER = 0;
+        public static final int CANDLE = 0;
     }
 
     public static class Launcher{
@@ -19,6 +20,8 @@ public class Constants {
         public static final double INTAKE_VOLTS = 4.5;
         public static final double AMP_VOLTS_TOP = 3;
         public static final double AMP_VOLTS_BOTTOM = 2;
+        public static final double LAUNCH_GAP = 1.5;
+        public static final double INTAKE_TIME = 2.0;
     }
 
     public static class Drivetrain{
