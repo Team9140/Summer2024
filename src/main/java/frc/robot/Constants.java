@@ -5,6 +5,14 @@ import frc.robot.generated.TunerConstants;
 public class Constants {
     public static final double LOOP_INTERVAL = 0.1;
 
+    public enum SYSID {
+        Teleop,
+        SteerSysId, 
+        DriveSysId
+    }
+    
+    public static final Constants.SYSID SYSID_MODE = SYSID.DriveSysId;
+
     public static class Ports{
         public static final int TOP_LAUNCHER = 6;
         public static final int BOTTOM_LAUNCHER = 53;

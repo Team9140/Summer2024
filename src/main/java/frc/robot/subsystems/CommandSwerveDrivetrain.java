@@ -2,6 +2,7 @@ package frc.robot.subsystems;
 
 import java.util.function.Supplier;
 
+import com.ctre.phoenix6.SignalLogger;
 import com.ctre.phoenix6.mechanisms.swerve.SwerveDrivetrain;
 import com.ctre.phoenix6.mechanisms.swerve.SwerveDrivetrainConstants;
 import com.ctre.phoenix6.mechanisms.swerve.SwerveModuleConstants;
@@ -10,12 +11,14 @@ import com.ctre.phoenix6.mechanisms.swerve.SwerveRequest;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
+import edu.wpi.first.units.Units;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Subsystem;
+import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 
 
 public class CommandSwerveDrivetrain extends SwerveDrivetrain implements Subsystem {
@@ -66,10 +69,6 @@ public class CommandSwerveDrivetrain extends SwerveDrivetrain implements Subsyst
         return m_moduleLocations;
     }
     
-    /**
-     * This method is called periodically by the CommandScheduler.
-     * It handles applying the correct operator perspective based on alliance color.
-     */
     @Override
     public void periodic() {
 
@@ -82,6 +81,8 @@ public class CommandSwerveDrivetrain extends SwerveDrivetrain implements Subsyst
         SmartDashboard.putNumber("Drivetrain/Pose_X", pose.getX());
         SmartDashboard.putNumber("Drivetrain/Pose_Y", pose.getY());
         SmartDashboard.putNumber("Drivetrain/Pose_Rotation", pose.getRotation().getDegrees());
+
+        SmartDashboard.putNumber("pigeon yaw", this.m_pigeon2.getYaw().getValueAsDouble());
 
         var moduleStates = getState().ModuleStates;
         if (moduleStates != null) {
@@ -99,5 +100,49 @@ public class CommandSwerveDrivetrain extends SwerveDrivetrain implements Subsyst
                 hasAppliedOperatorPerspective = true;
             });
         }
+    }
+
+    private final SwerveRequest.SysIdSwerveTranslation SysIDTranslate = new SwerveRequest.SysIdSwerveTranslation();
+
+    private SysIdRoutine translateRoutine = new SysIdRoutine(
+            new SysIdRoutine.Config(
+                    null,
+                    Units.Volts.of(4),
+                    null,
+                    (state) -> SignalLogger.writeString("state", state.toString())),
+            new SysIdRoutine.Mechanism(
+                    (volts) -> setControl(SysIDTranslate.withVolts(volts)),
+                    null,
+                    this));
+
+    private final SwerveRequest.SysIdSwerveSteerGains SysIDSteer = new SwerveRequest.SysIdSwerveSteerGains();
+
+    private SysIdRoutine steerRoutine = new SysIdRoutine(
+            new SysIdRoutine.Config(
+                    null,
+                    Units.Volts.of(4),
+                    null,
+                    (state) -> SignalLogger.writeString("state", state.toString())),
+            new SysIdRoutine.Mechanism(
+                    (volts) -> setControl(SysIDSteer.withVolts(volts)),
+                    null,
+                    this));
+
+
+    public Command sysIdQuasistatic(SysIdRoutine.Direction direction) {
+        return translateRoutine.quasistatic(direction);
+    }
+
+    public Command sysIdDynamic(SysIdRoutine.Direction direction) {
+        return translateRoutine.dynamic(direction);
+    }
+
+    public Command steerSysIdQuasistatic(SysIdRoutine.Direction direction)
+    {
+        return steerRoutine.quasistatic(direction);
+    }
+
+    public Command steerSysIdDynamic(SysIdRoutine.Direction direction) {
+        return steerRoutine.dynamic(direction);
     }
 }
