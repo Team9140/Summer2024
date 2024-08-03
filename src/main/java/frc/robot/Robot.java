@@ -60,14 +60,14 @@ public class Robot extends TimedRobot {
     autoChooser.addOption("Blue Ref Side", "Blue3");
     autoChooser.setDefaultOption("Red Amp Side", "Red1");
     autoChooser.addOption("Red Mid Side", "Red2");
-    autoChooser.addOption("Red Amp Side", "Red3");
+    autoChooser.addOption("Red Ref Side", "Red3");
     SmartDashboard.putData("Auto Chooser", autoChooser);
     pathInitialPoses.put("Blue1", new Pose2d(0.71, 6.69, new Rotation2d(Units.degreesToRadians(-120))));
-    pathInitialPoses.put("Blue2", new Pose2d(1.369, 5.552, new Rotation2d(Units.degreesToRadians(180))));
-    pathInitialPoses.put("Blue3", new Pose2d(0.71,  4.37, new Rotation2d(Units.degreesToRadians( -60.00))));
-    pathInitialPoses.put("Red1", new Pose2d(11.90, 6.15, new Rotation2d(0)));
-    pathInitialPoses.put("Red2", new Pose2d(0, 10, new Rotation2d(10)));
-    pathInitialPoses.put("Red3", new Pose2d(0, 20, new Rotation2d(15)));
+    pathInitialPoses.put("Blue2", new Pose2d(1.37, 5.552, new Rotation2d(Units.degreesToRadians(180))));
+    pathInitialPoses.put("Blue3", new Pose2d(0.71,  4.37, new Rotation2d(Units.degreesToRadians( 120))));
+    pathInitialPoses.put("Red1", new Pose2d(15.83, 10, new Rotation2d(Units.degreesToRadians(60))));
+    pathInitialPoses.put("Red2", new Pose2d(15.15, 5.56, new Rotation2d(Units.degreesToRadians(0))));
+    pathInitialPoses.put("Red3", new Pose2d(15.83, 6.73, new Rotation2d(Units.degreesToRadians(-60))));
 
   }
 
