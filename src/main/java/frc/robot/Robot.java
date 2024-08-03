@@ -4,10 +4,14 @@
 
 package frc.robot;
 
+import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.TimedRobot;
+import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
-import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.WaitCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
@@ -16,6 +20,10 @@ import frc.robot.subsystems.Launcher;
 import frc.robot.subsystems.Cantdle;
 
 import com.ctre.phoenix6.mechanisms.swerve.SwerveRequest;
+
+import java.util.HashMap;
+import java.util.Map;
+
 import com.ctre.phoenix6.SignalLogger;
 import com.ctre.phoenix6.mechanisms.swerve.SwerveModule.DriveRequestType;
 
@@ -28,24 +36,50 @@ public class Robot extends TimedRobot {
   private Launcher launcher;
   private Cantdle vegetable;
 
-  private Auto auto;
-  private Command autonomousCommand;
-
   private final SwerveRequest.FieldCentric drive = new SwerveRequest.FieldCentric()
       .withDeadband(Constants.Drivetrain.MAX_SPEED * 0.1)
       .withRotationalDeadband(Constants.Drivetrain.MAX_ANGULAR_RATE * 0.1)
-      .withDriveRequestType(DriveRequestType.OpenLoopVoltage);
+      .withDriveRequestType(DriveRequestType.Velocity);
+
+  private SendableChooser<String> autoChooser = new SendableChooser<>();
+  Map<String, Pose2d> pathInitialPoses = new HashMap<>();
+
+  public void setPosition() {
+    String selectedAuto = autoChooser.getSelected();
+    if (selectedAuto != null) {
+      Pose2d initialPose = pathInitialPoses.get(selectedAuto);
+      if (initialPose != null) {
+        drivetrain.seedFieldRelative(initialPose);
+      }
+    }
+  }
+
+  public void addChooser(){
+    autoChooser.setDefaultOption("Blue Amp Side", "Blue1");
+    autoChooser.addOption("Blue Mid Side", "Blue2");
+    autoChooser.addOption("Blue Ref Side", "Blue3");
+    autoChooser.setDefaultOption("Red Amp Side", "Red1");
+    autoChooser.addOption("Red Mid Side", "Red2");
+    autoChooser.addOption("Red Amp Side", "Red3");
+    SmartDashboard.putData("Auto Chooser", autoChooser);
+    pathInitialPoses.put("Blue1", new Pose2d(0.71, 6.69, new Rotation2d(Units.degreesToRadians(-120))));
+    pathInitialPoses.put("Blue2", new Pose2d(1.369, 5.552, new Rotation2d(Units.degreesToRadians(180))));
+    pathInitialPoses.put("Blue3", new Pose2d(0.71,  4.37, new Rotation2d(Units.degreesToRadians( -60.00))));
+    pathInitialPoses.put("Red1", new Pose2d(11.90, 6.15, new Rotation2d(0)));
+    pathInitialPoses.put("Red2", new Pose2d(0, 10, new Rotation2d(10)));
+    pathInitialPoses.put("Red3", new Pose2d(0, 20, new Rotation2d(15)));
+
+  }
 
   @Override
   public void robotInit() {
     this.launcher = Launcher.getInstance();
-    this.auto = new Auto(drivetrain);
     this.vegetable = Cantdle.getInstance();
+    addChooser();
     configureButtonBindings();
   }
 
   private void configureButtonBindings() {
-
     switch (Constants.SYSID_MODE) {
       case Teleop:
         drivetrain.setDefaultCommand(
@@ -64,11 +98,15 @@ public class Robot extends TimedRobot {
         this.joystick.rightTrigger().and(this.launcher.isGood())
             .onTrue(this.launcher.launch());
 
+        this.joystick.leftTrigger()
+            .onTrue(this.drivetrain.faceSource());
+            
         this.joystick.rightBumper()
-            .onTrue(this.launcher.intake()).onFalse(this.launcher.off());
+          .onTrue(this.launcher.intake()).onFalse(this.launcher.off());
 
         this.joystick.b()
             .onTrue(this.launcher.amp()).onFalse(new WaitCommand(1).andThen(this.launcher.off()));
+
         break;
 
       case SteerSysId:
@@ -95,7 +133,7 @@ public class Robot extends TimedRobot {
 
   @Override
   public void disabledInit() {
-    if (Constants.SYSID_MODE != Constants.SYSID.Teleop) SignalLogger.stop();
+    SignalLogger.stop();
     this.vegetable.setRed(DriverStation.getAlliance().get().equals(Alliance.Red));
   }
 
@@ -109,10 +147,7 @@ public class Robot extends TimedRobot {
 
   @Override
   public void autonomousInit() {
-    autonomousCommand = auto.getAutonomousCommand();
-    if (autonomousCommand != null) {
-      autonomousCommand.schedule();
-    }
+    setPosition();
   }
 
   @Override
@@ -125,7 +160,7 @@ public class Robot extends TimedRobot {
 
   @Override
   public void teleopInit() {
-    if (Constants.SYSID_MODE != Constants.SYSID.Teleop) SignalLogger.start();
+    SignalLogger.start();
   }
 
   @Override

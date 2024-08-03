@@ -8,6 +8,8 @@ import com.ctre.phoenix6.mechanisms.swerve.SwerveDrivetrainConstants;
 import com.ctre.phoenix6.mechanisms.swerve.SwerveModuleConstants;
 import com.ctre.phoenix6.mechanisms.swerve.SwerveRequest;
 
+import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
@@ -17,8 +19,10 @@ import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.Subsystem;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
+import frc.robot.Constants;
 
 
 public class CommandSwerveDrivetrain extends SwerveDrivetrain implements Subsystem {
@@ -28,8 +32,12 @@ public class CommandSwerveDrivetrain extends SwerveDrivetrain implements Subsyst
     private final Rotation2d RedAlliancePerspectiveRotation = Rotation2d.fromDegrees(180);
     // Flag to track if operator perspective has been applied
     private boolean hasAppliedOperatorPerspective = false;
-    
+    // Autobuilder request to move robot
     private final SwerveRequest.ApplyChassisSpeeds AutoRequest = new SwerveRequest.ApplyChassisSpeeds();
+
+    private final PIDController rotationController;
+
+    private final SwerveRequest.FieldCentric driveRequest = new SwerveRequest.FieldCentric();
 
     /**
      * Constructor for CommandSwerveDrivetrain.
@@ -38,6 +46,9 @@ public class CommandSwerveDrivetrain extends SwerveDrivetrain implements Subsyst
      */
     public CommandSwerveDrivetrain(SwerveDrivetrainConstants driveTrainConstants, SwerveModuleConstants... modules) {
         super(driveTrainConstants, modules);
+        rotationController = new PIDController(0.1, 0, 0);
+        rotationController.enableContinuousInput(-180, 180);
+        rotationController.setTolerance(Constants.ROTATION_TOLERANCE);
     }
 
     public Pose2d getPose() {
@@ -68,27 +79,44 @@ public class CommandSwerveDrivetrain extends SwerveDrivetrain implements Subsyst
     public Translation2d[] getModuleLocations() {
         return m_moduleLocations;
     }
+    private void updateFaceSourceControl() {
+        double targetAngle = DriverStation.getAlliance().orElse(DriverStation.Alliance.Blue) == DriverStation.Alliance.Blue 
+            ? Constants.BLUE_AMP_POS_ROTATION 
+            : Constants.RED_AMP_POS_ROTATION;
+        double currentAngle = getPose().getRotation().getDegrees();
+        
+        double rotationSpeed = rotationController.calculate(currentAngle, targetAngle);
+        
+        double maxRotationSpeed = Constants.Drivetrain.MAX_ANGULAR_RATE;
+        rotationSpeed = MathUtil.clamp(rotationSpeed, -maxRotationSpeed, maxRotationSpeed);
+
+        setControl(driveRequest.withVelocityX(0)
+        .withVelocityY(0)
+        .withRotationalRate(rotationSpeed));
+    }
     
+    public Command faceSource() {
+        return Commands.run(this::updateFaceSourceControl, this)
+        .until(() -> Math.abs(rotationController.getPositionError()) < rotationController.getPositionTolerance());
+    }
+
     @Override
     public void periodic() {
+        SmartDashboard.putNumber("Velocity_X", getCurrentRobotChassisSpeeds().vxMetersPerSecond);
+        SmartDashboard.putNumber("Velocity_Y", getCurrentRobotChassisSpeeds().vyMetersPerSecond);
+        SmartDashboard.putNumber("Angular_Velocity", getCurrentRobotChassisSpeeds().omegaRadiansPerSecond);
 
-        ChassisSpeeds speeds = getCurrentRobotChassisSpeeds();
-        SmartDashboard.putNumber("Drivetrain/Velocity_X", speeds.vxMetersPerSecond);
-        SmartDashboard.putNumber("Drivetrain/Velocity_Y", speeds.vyMetersPerSecond);
-        SmartDashboard.putNumber("Drivetrain/Angular_Velocity", speeds.omegaRadiansPerSecond);
-
-        Pose2d pose = getPose();
-        SmartDashboard.putNumber("Drivetrain/Pose_X", pose.getX());
-        SmartDashboard.putNumber("Drivetrain/Pose_Y", pose.getY());
-        SmartDashboard.putNumber("Drivetrain/Pose_Rotation", pose.getRotation().getDegrees());
+        SmartDashboard.putNumber("Pose_X", getPose().getX());
+        SmartDashboard.putNumber("Pose_Y", getPose().getY());
+        SmartDashboard.putNumber("Pose_Rotation", getPose().getRotation().getDegrees());
 
         SmartDashboard.putNumber("pigeon yaw", this.m_pigeon2.getYaw().getValueAsDouble());
 
         var moduleStates = getState().ModuleStates;
         if (moduleStates != null) {
             for (int i = 0; i < moduleStates.length; i++) {
-                SmartDashboard.putNumber("Drivetrain/Module_" + i + "_Angle", moduleStates[i].angle.getDegrees());
-                SmartDashboard.putNumber("Drivetrain/Module_" + i + "_Velocity", moduleStates[i].speedMetersPerSecond);
+                SmartDashboard.putNumber("Module_" + i + "_Angle", moduleStates[i].angle.getDegrees());
+                SmartDashboard.putNumber("Module_" + i + "_Velocity", moduleStates[i].speedMetersPerSecond);
             }
         }
 

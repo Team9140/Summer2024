@@ -11,7 +11,12 @@ public class Constants {
         DriveSysId
     }
     
-    public static final Constants.SYSID SYSID_MODE = SYSID.DriveSysId;
+    public static final Constants.SYSID SYSID_MODE = SYSID.Teleop;
+
+    public static final double RED_AMP_POS_ROTATION= -120;
+    public static final double BLUE_AMP_POS_ROTATION= -60;
+
+    public static final double ROTATION_TOLERANCE  = 2;
 
     public static class Ports{
         public static final int TOP_LAUNCHER = 6;
