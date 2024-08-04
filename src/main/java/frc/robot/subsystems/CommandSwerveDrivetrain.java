@@ -5,6 +5,7 @@ import java.util.function.Supplier;
 import com.ctre.phoenix6.SignalLogger;
 import com.ctre.phoenix6.mechanisms.swerve.SwerveDrivetrain;
 import com.ctre.phoenix6.mechanisms.swerve.SwerveDrivetrainConstants;
+import com.ctre.phoenix6.mechanisms.swerve.SwerveModule.DriveRequestType;
 import com.ctre.phoenix6.mechanisms.swerve.SwerveModuleConstants;
 import com.ctre.phoenix6.mechanisms.swerve.SwerveRequest;
 
@@ -38,6 +39,8 @@ public class CommandSwerveDrivetrain extends SwerveDrivetrain implements Subsyst
     private final PIDController rotationController;
 
     private final SwerveRequest.FieldCentric driveRequest = new SwerveRequest.FieldCentric();
+
+    private final SwerveRequest.RobotCentric forwardStraight = new SwerveRequest.RobotCentric().withDriveRequestType(DriveRequestType.Velocity);
 
     /**
      * Constructor for CommandSwerveDrivetrain.
@@ -87,7 +90,7 @@ public class CommandSwerveDrivetrain extends SwerveDrivetrain implements Subsyst
         
         double rotationSpeed = rotationController.calculate(currentAngle, targetAngle);
         
-        double maxRotationSpeed = Constants.Drivetrain.MAX_ANGULAR_RATE;
+        double maxRotationSpeed = 1;
         rotationSpeed = MathUtil.clamp(rotationSpeed, -maxRotationSpeed, maxRotationSpeed);
 
         setControl(driveRequest.withVelocityX(0)
@@ -98,6 +101,14 @@ public class CommandSwerveDrivetrain extends SwerveDrivetrain implements Subsyst
     public Command faceSource() {
         return Commands.run(this::updateFaceSourceControl, this)
         .until(() -> Math.abs(rotationController.getPositionError()) < rotationController.getPositionTolerance());
+    }
+    
+    public Command moveBackward(double distanceMeters) {
+        double speed = Constants.Drivetrain.MAX_AUTO_SPEED;
+        return this.applyRequest(() -> forwardStraight
+                .withVelocityX(-speed)
+                .withVelocityY(0))
+            .withTimeout(distanceMeters / speed);
     }
 
     @Override

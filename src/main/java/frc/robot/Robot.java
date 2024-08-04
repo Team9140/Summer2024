@@ -13,6 +13,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
+import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
 import edu.wpi.first.wpilibj2.command.WaitCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine.Direction;
@@ -35,8 +36,14 @@ public class Robot extends TimedRobot {
   private final CommandSwerveDrivetrain drivetrain = TunerConstants.DriveTrain;
   private Launcher launcher;
   private Cantdle vegetable;
+  private boolean isFieldCentric = true;
 
   private final SwerveRequest.FieldCentric drive = new SwerveRequest.FieldCentric()
+      .withDeadband(Constants.Drivetrain.MAX_SPEED * 0.1)
+      .withRotationalDeadband(Constants.Drivetrain.MAX_ANGULAR_RATE * 0.1)
+      .withDriveRequestType(DriveRequestType.Velocity);
+
+  private final SwerveRequest.RobotCentric robotCentricDrive = new SwerveRequest.RobotCentric()
       .withDeadband(Constants.Drivetrain.MAX_SPEED * 0.1)
       .withRotationalDeadband(Constants.Drivetrain.MAX_ANGULAR_RATE * 0.1)
       .withDriveRequestType(DriveRequestType.Velocity);
@@ -82,12 +89,21 @@ public class Robot extends TimedRobot {
   private void configureButtonBindings() {
     switch (Constants.SYSID_MODE) {
       case Teleop:
-        drivetrain.setDefaultCommand(
-            drivetrain.applyRequest(() -> drive
+      drivetrain.setDefaultCommand(
+        drivetrain.applyRequest(() -> {
+          if (isFieldCentric) {
+            return drive
                 .withVelocityX(-joystick.getLeftY() * Constants.Drivetrain.MAX_SPEED)
                 .withVelocityY(-joystick.getLeftX() * Constants.Drivetrain.MAX_SPEED)
-                .withRotationalRate(-joystick.getRightX() * Constants.Drivetrain.MAX_ANGULAR_RATE))
-                .ignoringDisable(true));
+                .withRotationalRate(-joystick.getRightX() * Constants.Drivetrain.MAX_ANGULAR_RATE);
+          } else {
+            return robotCentricDrive
+                .withVelocityX(-joystick.getLeftY() * Constants.Drivetrain.MAX_SPEED)
+                .withVelocityY(-joystick.getLeftX() * Constants.Drivetrain.MAX_SPEED)
+                .withRotationalRate(-joystick.getRightX() * Constants.Drivetrain.MAX_ANGULAR_RATE);
+          }
+        }).ignoringDisable(true));
+
 
         joystick.y().onTrue(drivetrain.runOnce(drivetrain::seedFieldRelative));
 
@@ -98,9 +114,15 @@ public class Robot extends TimedRobot {
         this.joystick.rightTrigger().and(this.launcher.isGood())
             .onTrue(this.launcher.launch());
 
-        this.joystick.leftTrigger()
-            .onTrue(this.drivetrain.faceSource());
+        // this.joystick.leftTrigger()
+        //     .onTrue(this.drivetrain.faceSource());
             
+        joystick.leftTrigger().onTrue(drivetrain.runOnce(() -> {
+          isFieldCentric = false;
+        })).onFalse((drivetrain.runOnce(() -> {
+          isFieldCentric = true;
+        })));
+        
         this.joystick.rightBumper()
           .onTrue(this.launcher.intake()).onFalse(this.launcher.off());
 
@@ -147,7 +169,15 @@ public class Robot extends TimedRobot {
 
   @Override
   public void autonomousInit() {
-    setPosition();
+    //setPosition();
+    new SequentialCommandGroup(
+      this.launcher.prepareLaunch(),
+      new WaitCommand(2),
+      this.launcher.launch(),
+      new WaitCommand(1),
+      this.launcher.off()
+      // this.drivetrain.moveBackward(3)
+    ).schedule();
   }
 
   @Override

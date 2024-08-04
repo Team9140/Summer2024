@@ -55,7 +55,7 @@ public class Launcher extends SubsystemBase {
     }
 
     public Command setTopVolts(double volts) {
-        return this.run(() -> this.topLauncher.setVoltage(volts));
+        return this.runOnce(() -> this.topLauncher.setVoltage(volts));
     }
 
     public Command setBottomVolts(double volts) {
