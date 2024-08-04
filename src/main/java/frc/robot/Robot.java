@@ -175,8 +175,8 @@ public class Robot extends TimedRobot {
       new WaitCommand(2),
       this.launcher.launch(),
       new WaitCommand(1),
-      this.launcher.off()
-      // this.drivetrain.moveBackward(3)
+      this.launcher.off(),
+      this.drivetrain.moveBackward(3)
     ).schedule();
   }
 
